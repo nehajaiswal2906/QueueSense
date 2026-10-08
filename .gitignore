@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ML model
+*.pt
+
+# Test/demo videos
+*.mp4
+*.avi
+*.mov
+
+# Generated outputs
+output/
+outputs/
+*.log
+
+# IDE
+.vscode/
+.idea/

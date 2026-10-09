@@ -332,3 +332,32 @@ The Flask backend provides the following endpoints:
 - `POST /analyze` — Processes queue status and wait-time estimations.
 - `POST /upload` — Accepts media uploads for CV pipeline analysis.
 
+
+## 12. Backend-to-Frontend Data Flow
+
+The QueueSense system follows a modular flow in which the backend serves as the communication layer between the queue-analysis pipeline and the user-facing interface.
+
+```text
+Computer Vision Pipeline
+          │
+          ▼
+     Backend / API
+          │
+          ▼
+  Queue Analysis Results
+  ├── Queue status
+  ├── Queue count
+  ├── Wait-time estimate
+  └── Other relevant metrics
+          │
+          ▼
+   Frontend Interface
+          │
+          ▼
+    User Visualization
+```
+
+The backend receives or processes the relevant results produced by the analysis pipeline and makes the required information available through its API layer. The frontend can consume these results and present them in a user-facing format.
+
+This separation keeps the computer-vision, backend, and frontend layers modular, allowing the frontend implementation and presentation layer to evolve independently while consuming the available backend data.
+

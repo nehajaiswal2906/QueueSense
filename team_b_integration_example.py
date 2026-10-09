@@ -9,46 +9,37 @@ import os
 import cv2
 import numpy as np
 
+import config
 from pipeline import create_pipeline, QueueSensePipeline
 
 # ------------------------------------------------------------------------------
 # 1. Pipeline Initialization (Run once on Flask server startup)
 # ------------------------------------------------------------------------------
 # Configure polygonal queue ROI matching the venue camera's ground perspective:
-QUEUE_ROI = [
-    (100, 50),
-    (600, 50),
-    (600, 400),
-    (100, 400)
-]
+QUEUE_ROI = config.DEFAULT_QUEUE_ROI
 
 # Optional service / counter area (where served customers step up)
-SERVICE_ZONE = [
-    (550, 50),
-    (750, 50),
-    (750, 350),
-    (550, 350)
-]
+SERVICE_ZONE = config.DEFAULT_SERVICE_ZONE
 
 # Initialize pipeline (Team B can also supply a fallback manual_service_rate in people/min)
 pipeline = create_pipeline(
     roi_polygon=QUEUE_ROI,
     service_zone=SERVICE_ZONE,
     conf_thresh=0.35,
-    manual_service_rate=2.0  # Demonstrating fallback service rate: 2.0 people/min
+    manual_service_rate=2.5  # Demonstrating configured fallback rate: 2.5 people/min
 )
 
 print(f"[Team B Init] Pipeline initialized on device: {pipeline.device.upper()}")
 
 
 # ------------------------------------------------------------------------------
-# 2. Reading a Real Video Frame with Visible People
+# 2. Reading Real Video Frames with Visible People
 # ------------------------------------------------------------------------------
-# Find an available video source with active pedestrian / queue activity
+# Priority candidates: real canteen queue demo video, cafe candidate, test image
 video_candidates = [
-    ("people_detection.mp4", 35),  # Frame 35 has an active pedestrian inside ROI
-    ("sample_test.mp4", 70),       # Frame 70 has an active pedestrian
-    ("classroom.mp4", 10)          # Frame 10 has multiple people
+    ("assets/canteen_queue_demo.mp4", 50),
+    ("assets/cafe_counter_candidate.mp4", 30),
+    ("test_bus.jpg", 0)
 ]
 
 frame = None

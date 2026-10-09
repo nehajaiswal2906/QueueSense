@@ -21,9 +21,9 @@ import config
 
 def parse_args():
     parser = argparse.ArgumentParser(description="QueueSense Computer Vision Demo Runner (Team A)")
-    parser.add_argument("--video", type=str, default="sample_test.mp4", help="Path to video file")
+    parser.add_argument("--video", type=str, default=config.DEFAULT_VIDEO_PATH, help="Path to video file")
     parser.add_argument("--cam", type=int, default=None, help="Camera index for webcam stream")
-    parser.add_argument("--save", type=str, default="output_demo.mp4", help="Path to save annotated video")
+    parser.add_argument("--save", type=str, default="output/canteen_queue_annotated.mp4", help="Path to save annotated video")
     parser.add_argument("--no-window", action="store_true", help="Run in headless mode without GUI window")
     parser.add_argument("--max-frames", type=int, default=None, help="Maximum number of frames to process")
     parser.add_argument("--conf", type=float, default=config.CONFIDENCE_THRESHOLD, help="Detection confidence threshold")
@@ -38,7 +38,7 @@ def main():
     if args.cam is None:
         if not os.path.exists(args.video):
             print(f"[ERROR] Video file not found: '{args.video}'")
-            print("Please check the path or download a sample video.")
+            print("Please check the path or ensure assets/canteen_queue_demo.mp4 is available.")
             sys.exit(1)
         source = args.video
         print(f"[QueueSense] Selected input video: {source}")
@@ -69,22 +69,12 @@ def main():
 
     print(f"[QueueSense] Video Info: {width}x{height} @ {fps:.1f} FPS, total frames: {total_frames}")
 
-    # 3. Configure Queue ROI (calibrated to frame dimensions)
-    # Default: central queue area covering 50% width and 65% height
-    roi = [
-        (int(width * 0.15), int(height * 0.20)),
-        (int(width * 0.70), int(height * 0.20)),
-        (int(width * 0.70), int(height * 0.85)),
-        (int(width * 0.15), int(height * 0.85))
-    ]
-
-    # Optional service counter zone near top-right of ROI
-    service_zone = [
-        (int(width * 0.65), int(height * 0.15)),
-        (int(width * 0.85), int(height * 0.15)),
-        (int(width * 0.85), int(height * 0.45)),
-        (int(width * 0.65), int(height * 0.45))
-    ]
+    # 3. Configure Queue ROI & Service Zone (scaled to frame dimensions)
+    roi = config.scale_polygon(config.DEFAULT_QUEUE_ROI, config.BASE_RESOLUTION, (width, height))
+    service_zone = (
+        config.scale_polygon(config.DEFAULT_SERVICE_ZONE, config.BASE_RESOLUTION, (width, height))
+        if config.DEFAULT_SERVICE_ZONE is not None else None
+    )
 
     # 4. Initialize pipeline
     pipeline = QueueSensePipeline(
@@ -98,7 +88,15 @@ def main():
 
     # 5. Set up VideoWriter if saving
     writer = None
+    preview_saved = False
+    preview_frame_target = max(1, total_frames // 2) if total_frames > 0 else 50
+    preview_img_path = None
+
     if args.save:
+        save_dir = os.path.dirname(os.path.abspath(args.save))
+        os.makedirs(save_dir, exist_ok=True)
+        preview_img_path = os.path.join(save_dir, "canteen_queue_preview.jpg")
+
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
         writer = cv2.VideoWriter(args.save, fourcc, fps, (width, height))
         if not writer.isOpened():
@@ -131,6 +129,11 @@ def main():
 
             if writer:
                 writer.write(annotated_frame)
+
+            if preview_img_path and not preview_saved and frame_idx >= preview_frame_target:
+                cv2.imwrite(preview_img_path, annotated_frame)
+                preview_saved = True
+                print(f"[QueueSense] Saved preview screenshot to: {preview_img_path}")
 
             # Periodic log update
             if frame_idx % 20 == 0 or frame_idx == 1:

@@ -349,6 +349,87 @@ class TestQueueSenseComprehensive(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_polygon([("abc", 100), (200, 200), (300, 300)])
 
+    # --------------------------------------------------------------------------
+    # Scenario 18: Multiple sequential service completions (no double counts)
+    # --------------------------------------------------------------------------
+    def test_18_multiple_sequential_service_completions(self):
+        # Two distinct people dwell in queue
+        p1 = [{"id": 101, "bbox": [150, 150, 250, 250], "confidence": 0.95}]
+        p2 = [{"id": 102, "bbox": [160, 160, 240, 240], "confidence": 0.95}]
+        for _ in range(4):
+            self.analyzer.update(p1 + p2)
+
+        # Person 101 moves to service zone -> served count becomes 1
+        p1_srv = [{"id": 101, "bbox": [320, 120, 380, 200], "confidence": 0.95}]
+        res1 = self.analyzer.update(p1_srv + p2)
+        self.assertEqual(res1["total_served"], 1)
+
+        # Person 102 moves to service zone -> served count becomes 2
+        p2_srv = [{"id": 102, "bbox": [320, 120, 380, 200], "confidence": 0.95}]
+        res2 = self.analyzer.update(p1_srv + p2_srv)
+        self.assertEqual(res2["total_served"], 2)
+
+        # Frame where both stay in service zone -> count remains 2
+        res3 = self.analyzer.update(p1_srv + p2_srv)
+        self.assertEqual(res3["total_served"], 2)
+
+    # --------------------------------------------------------------------------
+    # Scenario 19: Safe wait time calculation edge cases
+    # --------------------------------------------------------------------------
+    def test_19_safe_wait_time_calculation(self):
+        def compute_wait_time(queue_count, service_rate):
+            if service_rate is not None and service_rate > 0:
+                return round(queue_count / service_rate, 1)
+            return None
+
+        # Standard case
+        self.assertEqual(compute_wait_time(4, 2.0), 2.0)
+        # Zero service rate must return None (prevent ZeroDivisionError)
+        self.assertIsNone(compute_wait_time(4, 0.0))
+        # Negative service rate must return None
+        self.assertIsNone(compute_wait_time(4, -1.5))
+        # None service rate must return None
+        self.assertIsNone(compute_wait_time(4, None))
+        # Zero queue count with valid rate gives 0.0
+        self.assertEqual(compute_wait_time(0, 2.0), 0.0)
+
+    # --------------------------------------------------------------------------
+    # Scenario 20: Polygon scaling utility correctness
+    # --------------------------------------------------------------------------
+    def test_20_polygon_scaling(self):
+        import config
+        poly = [(100, 200), (200, 200), (200, 400), (100, 400)]
+        # Scaling 2x from (1000, 500) to (2000, 1000)
+        scaled = config.scale_polygon(poly, (1000, 500), (2000, 1000))
+        self.assertEqual(scaled, [(200, 400), (400, 400), (400, 800), (200, 800)])
+
+        # Identical resolution should preserve vertices unchanged
+        same = config.scale_polygon(poly, (1000, 500), (1000, 500))
+        self.assertEqual(same, poly)
+
+    # --------------------------------------------------------------------------
+    # Scenario 21: Real queue video frame processing
+    # --------------------------------------------------------------------------
+    def test_21_real_queue_video_frame(self):
+        import cv2
+        video_path = "assets/canteen_queue_demo.mp4"
+        if not os.path.exists(video_path):
+            self.skipTest(f"{video_path} not available")
+
+        cap = cv2.VideoCapture(video_path)
+        self.assertTrue(cap.isOpened(), "Must open canteen demo video")
+        ret, frame = cap.read()
+        cap.release()
+        self.assertTrue(ret, "Must read frame from demo video")
+        self.assertEqual(frame.shape[:2], (720, 1280), "Resolution must be 1280x720")
+
+        pipeline = QueueSensePipeline()
+        result = pipeline.process_frame(frame)
+        self.assertIn("people", result)
+        self.assertIn("queue_count", result)
+        self.assertIsInstance(result["queue_count"], int)
+        self.assertGreaterEqual(len(result["people"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

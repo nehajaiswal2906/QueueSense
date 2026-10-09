@@ -1,35 +1,37 @@
-# Python
+# Python caches and bytecode
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+
+# Virtual environments
 .venv/
 venv/
+env/
 
-# ML model
+# ML weights (Ultralytics auto-downloads yolov8n.pt on first run)
 *.pt
 
-# Test/demo videos
-*.mp4
-*.avi
-*.mov
+# Root-level test/temporary video files
+/*.mp4
+/*.avi
+/*.mov
 
-# Generated outputs
+# Allow versioned demo assets
+!assets/
+!assets/*.mp4
+!assets/*.jpg
+!assets/*.png
+!assets/*.md
+
+# Generated pipeline outputs
 output/
 outputs/
 *.log
-
-# IDE
-.vscode/
-.idea/
-# Python generated files
-__pycache__/
-*.py[cod]
 
 # Uploaded test files
 uploads/
 backend/uploads/
 
-# Downloaded model weights
-yolov8n.pt
-
-# Local virtual environments
-.venv/
+# IDE files
+.vscode/
+.idea/

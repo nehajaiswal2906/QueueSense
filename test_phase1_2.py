@@ -9,7 +9,13 @@ from detector import PersonTracker
 
 def main():
     tracker = PersonTracker(model_path="yolov8n.pt", conf_thresh=0.35)
-    video_file = "people_detection.mp4" if os.path.exists("people_detection.mp4") else "sample_test.mp4"
+    video_candidates = [
+        "assets/canteen_queue_demo.mp4",
+        "assets/cafe_counter_candidate.mp4",
+        "people_detection.mp4",
+        "sample_test.mp4"
+    ]
+    video_file = next((v for v in video_candidates if os.path.exists(v)), "assets/canteen_queue_demo.mp4")
 
     cap = cv2.VideoCapture(video_file)
     if not cap.isOpened():

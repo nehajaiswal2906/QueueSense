@@ -2,21 +2,24 @@
 Test script for Phase 1 (YOLO detection) and Phase 2 (Tracking IDs)
 """
 
+import os
 import cv2
 from detector import PersonTracker
 
+
 def main():
     tracker = PersonTracker(model_path="yolov8n.pt", conf_thresh=0.35)
-    cap = cv2.VideoCapture("sample_test.mp4")
+    video_file = "people_detection.mp4" if os.path.exists("people_detection.mp4") else "sample_test.mp4"
 
+    cap = cv2.VideoCapture(video_file)
     if not cap.isOpened():
-        print("ERROR: Could not open sample_test.mp4")
+        print(f"ERROR: Could not open {video_file}")
         return
 
     frame_count = 0
-    max_frames = 30  # Test first 30 frames to verify detection and track consistency
+    max_frames = 50
 
-    print(f"Testing YOLO detection and tracking on sample_test.mp4...")
+    print(f"Testing YOLO detection and tracking on {video_file} (device: {tracker.device.upper()})...")
 
     while cap.isOpened() and frame_count < max_frames:
         ret, frame = cap.read()
@@ -28,10 +31,12 @@ def main():
         
         # Display detection & tracking summary
         ids = [p["id"] for p in people]
-        print(f"Frame {frame_count:02d}: Detected {len(people)} person(s) | IDs: {ids}")
+        if frame_count % 10 == 0 or len(people) > 0:
+            print(f"Frame {frame_count:02d}: Detected {len(people)} person(s) | IDs: {ids}")
 
     cap.release()
     print("Phase 1 & 2 verification complete.")
+
 
 if __name__ == "__main__":
     main()

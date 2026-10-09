@@ -119,3 +119,36 @@ Tests on 3 diverse video streams:
 2. **Camera Perspective**: The bottom-center of the bounding box is used as the foot position. Severe overhead angles or extreme side angles may require tweaking the ROI polygon vertices.
 3. **Short Dwell vs Service**: To prevent false service counts from passers-by momentarily stepping onto the ROI edge, the system enforces `min_dwell_frames` (default: 5 frames) before a departure is counted as a served customer.
 4. **Initial Warmup Period**: During the first ~3 seconds of observation, service rate defaults to 0.00 until sufficient observation time has elapsed to compute a statistically meaningful rate.
+
+## 5. Running the Team B Flask Backend
+
+From the repository root, create and activate a Python virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install the backend dependencies:
+
+```bash
+python -m pip install -r backend/requirements.txt
+```
+
+Start the Flask backend from the repository root:
+
+```bash
+python -m backend.app
+```
+
+The backend provides these endpoints:
+
+* `GET /` — confirms the backend is running.
+* `GET /health` — health check.
+* `GET /mock` — sample queue analysis.
+* `POST /analyze` — analyze queue count and service rate supplied as JSON.
+* `POST /upload` — upload an image or video for CV analysis.
+
+The first run may download the YOLO model weights. Internet access is required if the weights are not already cached.
+
+For local testing, use Flask's test client or send requests to the running server.

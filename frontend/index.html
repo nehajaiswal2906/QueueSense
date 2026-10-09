@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueueSense — Know the queue before you join</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col justify-between p-3 sm:p-6 lg:p-8">
+
+  <!-- Main Container (Balanced Desktop Width: ~620-720px for Right Column) -->
+  <div class="w-full max-w-6xl mx-auto flex flex-col gap-5">
+
+    <!-- 1. HEADER / HERO -->
+    <header class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 sm:p-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+        
+        <!-- Brand & Tagline -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            <!-- Modern Minimal Logo Mark -->
+            <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="brand-title text-2xl sm:text-[31px] font-black tracking-tight text-slate-900 leading-tight">QueueSense</span>
+              <span class="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                AI Queue Intelligence
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 font-medium">Know the queue before you join.</p>
+          </div>
+        </div>
+
+        <!-- Live Status Pill -->
+        <div class="flex items-center gap-2 self-start sm:self-auto">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-dot-pulse"></span>
+            <span>System Ready</span>
+          </div>
+          <span id="lastUpdatedTime" class="text-[11px] text-slate-400 font-mono hidden sm:inline-block">Live</span>
+        </div>
+      </div>
+
+      <!-- Hero Subhead (Clean, Direct) -->
+      <div class="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight">
+            Know the queue before you join.
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-600 mt-0.5 max-w-2xl">
+            Analyze a queue and get an instant estimate of crowd size and waiting time using computer vision.
+          </p>
+        </div>
+      </div>
+    </header>
+
+    <!-- 2. ERROR STATE BANNER (Shown when error triggers) -->
+    <div id="errorBanner" class="hidden bg-rose-50 border border-rose-200 rounded-2xl p-4 transition-all fade-in" role="alert" aria-live="assertive">
+      <div class="flex items-start gap-3">
+        <div class="p-1.5 rounded-lg bg-rose-100 text-rose-600 flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 id="errorTitle" class="text-xs sm:text-sm font-bold text-rose-900">Unable to analyze video.</h2>
+          <p id="errorMessage" class="text-xs text-rose-700 mt-0.5 leading-relaxed">Please try again or check that the backend is running.</p>
+        </div>
+        <button id="dismissErrorBtn" type="button" class="text-rose-400 hover:text-rose-700 p-1 rounded-md transition" aria-label="Dismiss error">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- 3. ZERO PEOPLE DETECTED NOTICE (Informational state) -->
+    <div id="emptyQueueNotice" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 transition-all fade-in">
+      <div class="flex items-center gap-3">
+        <div class="p-1.5 rounded-lg bg-emerald-100 text-emerald-700 flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <h2 class="text-xs sm:text-sm font-bold text-emerald-900">No people detected</h2>
+          <p class="text-xs text-emerald-700">The counter appears clear. Zero waiting time!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. CORE DASHBOARD WORKSPACE (Mobile-first stack, Balanced 2-col on Desktop) -->
+    <main class="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+
+      <!-- LEFT COLUMN: VIDEO INPUT, CROWD DISTRIBUTION & ACTIVITY (lg:col-span-6) -->
+      <section class="lg:col-span-6 flex flex-col gap-5">
+
+        <!-- Upload & Input Card -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+              </svg>
+              Queue Video Input
+            </h2>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Upload a queue video to estimate crowd size and waiting time.
+            </p>
+          </div>
+
+          <!-- Drag and Drop Zone -->
+          <div 
+            id="dropzone" 
+            role="button"
+            tabindex="0"
+            aria-label="Upload queue video file"
+            class="border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl p-5 text-center cursor-pointer transition-all bg-slate-50/60 hover:bg-emerald-50/20 flex flex-col items-center justify-center gap-2.5">
+            <input type="file" id="videoFileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/webm,video/*,image/*" class="hidden">
+            
+            <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center">
+              <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+
+            <div>
+              <p class="text-xs font-bold text-slate-800">
+                <span class="text-emerald-700 underline underline-offset-2">Upload Queue Video</span> or drag &amp; drop
+              </p>
+              <p class="text-[11px] text-slate-400 mt-0.5">MP4, MOV, or AVI video (Max 50MB)</p>
+            </div>
+          </div>
+
+          <!-- Selected File Badge (Disclosed when file chosen) -->
+          <div id="fileInfoBox" class="hidden p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between transition-all">
+            <div class="flex items-center gap-2.5 overflow-hidden">
+              <div class="w-7 h-7 rounded bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="truncate">
+                <p id="fileNameText" class="text-xs font-bold text-slate-800 truncate">canteen_feed.mp4</p>
+                <p id="fileSizeText" class="text-[10px] text-slate-400 font-mono">4.2 MB</p>
+              </div>
+            </div>
+            <button id="clearFileBtn" type="button" class="text-slate-400 hover:text-slate-700 text-xs px-2 py-1 rounded" title="Remove file" aria-label="Remove selected file">
+              ✕
+            </button>
+          </div>
+
+          <!-- PRIMARY CTA: Analyze Queue Button -->
+          <button 
+            id="analyzeBtn" 
+            type="button" 
+            class="w-full py-3.5 px-4 rounded-xl font-bold text-sm text-white bg-slate-900 hover:bg-slate-800 active:scale-[0.99] transition shadow-md shadow-slate-900/10 flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span id="analyzeBtnText">Analyze Queue</span>
+          </button>
+        </div>
+
+        <!-- AI CV PROCESSING STATE CARD (Checklist + Status) -->
+        <div id="processingCard" class="hidden bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 fade-in">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+            <div class="flex items-center gap-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+              <span class="text-xs font-bold text-slate-800">Analyzing queue...</span>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">CV Pipeline</span>
+          </div>
+
+          <!-- Meaningful Processing Steps as Specified -->
+          <div class="flex flex-col gap-2.5 text-xs">
+            <div id="step1" class="flex items-center gap-2.5 text-slate-400 transition-colors">
+              <span class="step-icon w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">1</span>
+              <span>Video uploaded</span>
+            </div>
+            <div id="step2" class="flex items-center gap-2.5 text-slate-400 transition-colors">
+              <span class="step-icon w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">2</span>
+              <span>Detecting people</span>
+            </div>
+            <div id="step3" class="flex items-center gap-2.5 text-slate-400 transition-colors">
+              <span class="step-icon w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">3</span>
+              <span>Estimating queue</span>
+            </div>
+            <div id="step4" class="flex items-center gap-2.5 text-slate-400 transition-colors">
+              <span class="step-icon w-4 h-4 rounded-full border border-slate-300 flex items-center justify-center text-[10px] font-bold">4</span>
+              <span>Calculating wait time</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CIRCULAR CROWD DISTRIBUTION CARD (Directly below Analyze Queue) -->
+        <div class="crowd-card bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 sm:p-7 flex flex-col gap-4">
+          
+          <!-- Card Header & Subtitle -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
+                </svg>
+                Where Is the Crowd?
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">Crowd distribution across queue zones</p>
+            </div>
+            <span id="distributionModeBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              Demo Breakdown
+            </span>
+          </div>
+
+          <!-- Chart & Legend Container: 2-Column Grid on Desktop (180px + minmax(0,1fr)) -->
+          <div id="distributionContent" class="crowd-card-content py-1">
+            
+            <!-- Circular Doughnut Chart Area (centered inside 180px column) -->
+            <div class="relative w-44 h-44 flex items-center justify-center justify-self-center flex-shrink-0">
+              <svg id="doughnutChartSvg" viewBox="0 0 140 140" class="w-44 h-44 transform -rotate-90">
+                <!-- Neutral background circle -->
+                <circle cx="70" cy="70" r="50" fill="transparent" stroke="#f1f5f9" stroke-width="15" />
+                <!-- Dynamic SVG Segments will be rendered here by app.js -->
+              </svg>
+              
+              <!-- Center Text (Total Detected People) -->
+              <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                <span id="doughnutTotalCount" class="text-3xl font-black text-slate-900 font-mono leading-none">8</span>
+                <span class="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider mt-1">People</span>
+              </div>
+            </div>
+
+            <!-- Chart Legend (Right Column with min-width: 0) -->
+            <div id="distributionLegend" class="crowd-legend flex flex-col gap-1.5" aria-label="Crowd category distribution legend">
+              <!-- Dynamically populated by app.js with aligned columns -->
+            </div>
+
+          </div>
+
+          <!-- Honest Live Mode Fallback (Shown when real backend has no zone classification) -->
+          <div id="distributionUnavailable" class="hidden py-6 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <div class="inline-flex p-2 bg-slate-100 rounded-full text-slate-400 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="font-bold text-slate-700">Category breakdown unavailable in live camera feed</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Live computer-vision model is currently tracking total count.</p>
+          </div>
+
+        </div>
+
+        <!-- 3. RECENT QUEUE ACTIVITY (Vertical Timeline - Left Column below Crowd Chart) -->
+        <div id="recentActivityCard" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
+          <!-- Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Recent Queue Activity
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">Observed queue events &amp; updates</p>
+            </div>
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
+              Live Log
+            </span>
+          </div>
+
+          <!-- Timeline Container -->
+          <div id="activityTimelineList" class="timeline-track flex flex-col gap-3 py-1">
+            <!-- Dynamically populated by app.js -->
+          </div>
+
+          <!-- Empty State (Shown before first analysis) -->
+          <div id="activityEmptyState" class="hidden py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <div class="inline-flex p-2 bg-slate-100 rounded-full text-slate-400 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p class="font-bold text-slate-700">No recent activity recorded yet</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Run video analysis to log detection events.</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT COLUMN: QUEUE STATUS, METRICS & TREND (lg:col-span-6) -->
+      <section class="lg:col-span-6 flex flex-col gap-5">
+
+        <!-- DOMINANT HERO QUEUE STATUS CARD (3-Second Glance) -->
+        <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 sm:p-7 relative overflow-hidden">
+          
+          <!-- Card Header & Density Badge -->
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Live Queue Status
+            </span>
+            <span id="statusBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wide bg-amber-100 text-amber-800 border border-amber-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+              MODERATE
+            </span>
+          </div>
+
+          <!-- Visually Dominant People in Queue -->
+          <div class="text-center py-4 sm:py-6">
+            <p class="text-xs font-extrabold uppercase tracking-widest text-slate-400 mb-1">
+              PEOPLE IN QUEUE
+            </p>
+            <div class="flex items-baseline justify-center gap-2">
+              <span id="queueCountVal" class="text-7xl sm:text-8xl font-black text-slate-900 tracking-tighter font-mono">
+                8
+              </span>
+              <span class="text-lg sm:text-xl font-bold text-slate-500">waiting</span>
+            </div>
+          </div>
+
+          <!-- QUEUE DENSITY BAR (LOW | MODERATE | HIGH) -->
+          <div class="pt-4 pb-2 border-t border-slate-100">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-500 mb-2">
+              <span>Queue Density</span>
+              <span id="densityText" class="text-slate-800 font-extrabold uppercase">Medium</span>
+            </div>
+
+            <!-- Simple 3-Segment Density Bar -->
+            <div class="grid grid-cols-3 gap-2 text-center" aria-label="Queue Density Indicator">
+              <div id="densitySegLow" class="density-step py-2 px-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-400 bg-slate-50">
+                LOW
+              </div>
+              <div id="densitySegMod" class="density-step py-2 px-1 rounded-lg border border-amber-300 text-[11px] font-extrabold text-amber-900 bg-amber-100 shadow-sm">
+                MODERATE
+              </div>
+              <div id="densitySegHigh" class="density-step py-2 px-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-400 bg-slate-50">
+                HIGH
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- KEY OPERATIONAL METRICS (Estimated Wait & Service Rate) -->
+        <div class="grid grid-cols-2 gap-4">
+          
+          <!-- Estimated Wait Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Estimated Wait</span>
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span id="estimatedWaitVal" class="text-4xl sm:text-5xl font-black text-slate-900 font-mono">4</span>
+                <span class="text-sm sm:text-base font-bold text-slate-500">min</span>
+              </div>
+              <p class="text-[11px] text-slate-400 font-medium mt-1">Based on crowd flow</p>
+            </div>
+          </div>
+
+          <!-- Service Rate Card -->
+          <div class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 flex flex-col justify-between">
+            <div class="flex items-center justify-between text-slate-400 mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Service Rate</span>
+              <svg class="w-4 h-4 text-slate-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+            </div>
+            <div>
+              <div class="flex items-baseline gap-1">
+                <span id="serviceRateVal" class="text-4xl sm:text-5xl font-black text-slate-900 font-mono">2</span>
+                <span class="text-xs sm:text-sm font-bold text-slate-500">people/min</span>
+              </div>
+              <p class="text-[11px] text-slate-400 font-medium mt-1">Counter throughput</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. QUEUE TREND (Line Chart across Successive Batches) -->
+        <div id="queueTrendCard" class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-6 flex flex-col gap-4">
+          <!-- Header -->
+          <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                Queue Trend
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">People counted across successive batches</p>
+            </div>
+            <!-- Trend Direction Summary Badge -->
+            <span id="trendDirectionBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
+              Stable →
+            </span>
+          </div>
+
+          <!-- Line Chart Content Area -->
+          <div id="trendChartContainer" class="w-full flex flex-col gap-2">
+            <!-- Responsive SVG Line Chart -->
+            <div class="w-full overflow-hidden">
+              <svg id="trendChartSvg" viewBox="0 0 420 180" class="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+                <!-- SVG Line & Points dynamically rendered by app.js -->
+              </svg>
+            </div>
+            <!-- Subtitle note -->
+            <div class="flex items-center justify-between text-[11px] text-slate-400 px-1 pt-1 border-t border-slate-50">
+              <span>Successive batches of 10 people observed</span>
+              <span id="trendModeIndicator" class="font-mono text-[10px] text-slate-400">Demo Batches</span>
+            </div>
+          </div>
+
+          <!-- Live Mode Empty State (When not enough batch history exists) -->
+          <div id="trendUnavailable" class="hidden py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <div class="inline-flex p-2 bg-slate-100 rounded-full text-slate-400 mb-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <p class="font-bold text-slate-700">Trend data will appear after more observations</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Tracking groups of 10 detected people across video frames.</p>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- 5. DEMO & HACKATHON PRESENTATION CONTROLS (Collapsible Drawer) -->
+    <footer class="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-4 mt-2">
+      <details class="group">
+        <summary class="flex items-center justify-between cursor-pointer text-xs font-bold text-slate-500 select-none">
+          <span class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Demo &amp; Testing Controls
+          </span>
+          <span class="text-[10px] text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-mono" id="currentModeBadge">MOCK MODE</span>
+        </summary>
+
+        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col gap-3 text-xs">
+          <!-- Live API / Mock Toggle -->
+          <div class="flex items-center justify-between">
+            <span class="text-slate-600 font-medium">Data Source:</span>
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="mockToggle" class="sr-only peer" checked>
+              <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span class="ml-2 text-[11px] font-bold text-slate-700" id="mockToggleLabel">Mock Data (Active)</span>
+            </label>
+          </div>
+
+          <!-- Scenario Shortcuts -->
+          <div class="flex flex-col gap-1.5">
+            <span class="text-slate-500 font-bold text-[11px] uppercase tracking-wider">Demo Scenarios:</span>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button type="button" class="scenario-btn px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold border border-slate-200 text-center" data-scenario="moderate">
+                Moderate (8 ppl)
+              </button>
+              <button type="button" class="scenario-btn px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold border border-slate-200 text-center" data-scenario="high">
+                Rush Hour (18 ppl)
+              </button>
+              <button type="button" class="scenario-btn px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold border border-slate-200 text-center" data-scenario="low">
+                Light (2 ppl)
+              </button>
+              <button type="button" class="scenario-btn px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-bold border border-slate-200 text-center" data-scenario="empty">
+                Empty (0 ppl)
+              </button>
+            </div>
+          </div>
+
+          <!-- Test Error States Directly -->
+          <div class="flex flex-col gap-1.5 pt-1">
+            <span class="text-slate-500 font-bold text-[11px] uppercase tracking-wider">Simulate Error States:</span>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="error-test-btn px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md text-[11px] font-medium border border-rose-200" data-error="backend_down">
+                Backend Unavailable
+              </button>
+              <button type="button" class="error-test-btn px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md text-[11px] font-medium border border-rose-200" data-error="proc_error">
+                Processing Error
+              </button>
+              <button type="button" class="error-test-btn px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-md text-[11px] font-medium border border-amber-200" data-error="invalid_file">
+                Invalid File
+              </button>
+              <button type="button" class="error-test-btn px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md text-[11px] font-medium border border-slate-200" data-error="invalid_resp">
+                Invalid API Response
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </details>
+    </footer>
+
+  </div>
+
+  <!-- JavaScript Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

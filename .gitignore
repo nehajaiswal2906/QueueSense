@@ -20,3 +20,16 @@ outputs/
 # IDE
 .vscode/
 .idea/
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# Uploaded test files
+uploads/
+backend/uploads/
+
+# Downloaded model weights
+yolov8n.pt
+
+# Local virtual environments
+.venv/

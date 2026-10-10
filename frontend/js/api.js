@@ -5,9 +5,9 @@
  */
 
 const API_CONFIG = {
-  USE_MOCK: true,
-  ENDPOINT: 'http://localhost:5000/analyze',
-  TIMEOUT_MS: 15000,
+  USE_MOCK: false,
+  ENDPOINT: 'http://localhost:5000/upload',
+  TIMEOUT_MS: 90000,
   MOCK_DELAY_MS: 2200 // Sufficient time to display realistic CV pipeline steps
 };
 
@@ -135,12 +135,9 @@ function validateResponse(data) {
   if (!data || typeof data !== 'object') return false;
   
   const hasQueueCount = typeof data.queue_count === 'number' && !isNaN(data.queue_count);
-  const hasServiceRate = typeof data.service_rate === 'number' && !isNaN(data.service_rate);
-  const hasEstimatedWait = typeof data.estimated_wait === 'number' && !isNaN(data.estimated_wait);
-  const hasDensity = typeof data.density === 'string' && data.density.trim().length > 0;
   const hasStatus = typeof data.status === 'string' && data.status.trim().length > 0;
 
-  return hasQueueCount && hasServiceRate && hasEstimatedWait && hasDensity && hasStatus;
+  return hasQueueCount && hasStatus;
 }
 
 /**
@@ -210,7 +207,7 @@ async function analyzeQueue(videoFile = null, options = {}, onStepCallback = nul
   // 2. REAL FLASK BACKEND INTEGRATION
   const formData = new FormData();
   if (videoFile) {
-    formData.append('video', videoFile);
+    formData.append('file', videoFile);
   }
 
   const controller = new AbortController();
@@ -254,6 +251,10 @@ async function analyzeQueue(videoFile = null, options = {}, onStepCallback = nul
       error.code = 'INVALID_RESPONSE';
       error.rawPayload = result;
       throw error;
+    }
+
+    if (!result.density) {
+      result.density = result.status || 'moderate';
     }
 
     if (typeof onStepCallback === 'function') {

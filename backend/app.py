@@ -57,6 +57,7 @@ def build_result(queue_count, service_rate):
         "service_rate": service_rate,
         "estimated_wait": waiting_time,
         "status": status,
+        "density": status,
         "message": message,
     }
 

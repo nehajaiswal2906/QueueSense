@@ -102,18 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // (isInitial = true to preserve default activity timeline)
   renderResult(window.QueueSenseAPI.DEFAULT_MOCK_DATA, true);
 
-  // Initialize UI with standard mock contract data (isInitial = true to preserve default activity timeline)
-  renderResult(window.QueueSenseAPI.DEFAULT_MOCK_DATA, true);
-
   // --- Keyboard & Click Accessibility on Dropzone ---
 
-
-dropzone.addEventListener('click', (e) => {
-  if (!isAnalyzing && e.target !== videoFileInput) {
-    videoFileInput.click();
-  }
-});
-
+  dropzone.addEventListener('click', (e) => {
+    if (!isAnalyzing && e.target !== videoFileInput) {
+      videoFileInput.click();
+    }
   });
 
   dropzone.addEventListener('keydown', (e) => {
@@ -535,28 +529,6 @@ dropzone.addEventListener('click', (e) => {
   }
 
   // --- Recent Queue Activity Engine ---
-
-
-const activityEvents = [
-  {
-    type: 'analysis',
-    title: 'Queue analysis completed',
-    description: 'Processed video sample for canteen line counter',
-    time: 'Just now'
-  },
-  {
-    type: 'count',
-    title: 'Current queue: 8 people',
-    description: 'Estimated wait is 4.0 min at 2.0 ppl/min throughput',
-    time: '1 min ago'
-  },
-  {
-    type: 'density',
-    title: 'Density state: MODERATE',
-    description: 'Crowd level within standard canteen capacity',
-    time: '2 mins ago'
-  }
-];
 
   function logEventsFromResult(data) {
     const timeStr = data.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
